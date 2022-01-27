@@ -6,6 +6,8 @@
 
 import {types} from 'node:util';
 import http from 'node:http';
+import http2 from 'node:http2';
+import { assertValidPseudoHeader } from 'internal/http2/util.js';
 
 /* c8 ignore next 9 */
 const validateHeaderName = typeof http.validateHeaderName === 'function' ?
@@ -17,6 +19,35 @@ const validateHeaderName = typeof http.validateHeaderName === 'function' ?
 			throw error;
 		}
 	};
+const pseudoHeaderNames = {
+	[http2.constants.HTTP2_HEADER_AUTHORITY]:true,
+	[http2.constants.HTTP2_HEADER_CONNECTION]:true,
+	[http2.constants.HTTP2_HEADER_METHOD]:true,
+	[http2.constants.HTTP2_HEADER_PATH]:true,
+	[http2.constants.HTTP2_HEADER_SCHEME]:true,
+	[http2.constants.HTTP2_HEADER_STATUS]:true
+};
+
+function validatePseudoHeader(name){
+	if(!pseudoHeaderNames[name]){
+		const error = new TypeError(`${name} is not a valid pseudo header`);
+		Object.defineProperty(error, 'code', {value: 'ERR_INVALID_PSEUDO_HEADER'});
+		throw error;
+	}
+}
+
+function validHeaderName2(name,protocolVersion){
+	if(protocolVersion === 2.0) {
+		if(http2.constants.assertValidPseudoHeader)
+		try {
+			validateHeaderName(name);
+		} catch (e) {
+			validatePseudoHeader(name);
+		}
+	} else {
+		validateHeaderName(name);
+	}
+}
 
 /* c8 ignore next 9 */
 const validateHeaderValue = typeof http.validateHeaderValue === 'function' ?
@@ -48,7 +79,7 @@ export default class Headers extends URLSearchParams {
 	 * @constructor
 	 * @param {HeadersInit} [init] - Response headers
 	 */
-	constructor(init) {
+	constructor(init,protocolVersion = 1.0) {
 		// Validate and normalize init object in [name, value(s)][]
 		/** @type {string[][]} */
 		let result = [];
@@ -97,7 +128,7 @@ export default class Headers extends URLSearchParams {
 		result =
 			result.length > 0 ?
 				result.map(([name, value]) => {
-					validateHeaderName(name);
+					validHeaderName2(name,protocolVersion);
 					validateHeaderValue(name, String(value));
 					return [String(name).toLowerCase(), String(value)];
 				}) :
@@ -113,7 +144,7 @@ export default class Headers extends URLSearchParams {
 					case 'append':
 					case 'set':
 						return (name, value) => {
-							validateHeaderName(name);
+							validateHeaderName2(name);
 							validateHeaderValue(name, String(value));
 							return URLSearchParams.prototype[p].call(
 								target,
@@ -126,7 +157,7 @@ export default class Headers extends URLSearchParams {
 					case 'has':
 					case 'getAll':
 						return name => {
-							validateHeaderName(name);
+							validateHeaderName2(name);
 							return URLSearchParams.prototype[p].call(
 								target,
 								String(name).toLowerCase()
@@ -255,7 +286,7 @@ export function fromRawHeaders(headers = []) {
 			}, [])
 			.filter(([name, value]) => {
 				try {
-					validateHeaderName(name);
+					validateHeaderName2(name);
 					validateHeaderValue(name, String(value));
 					return true;
 				} catch {

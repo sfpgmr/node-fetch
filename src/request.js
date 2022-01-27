@@ -83,7 +83,9 @@ export default class Request extends Body {
 			size: init.size || input.size || 0
 		});
 
-		const headers = new Headers(init.headers || input.headers || {});
+		const protocolVersion = isRequest(init) ? parseFloat(init.httpVersion) : 1.0;
+
+		const headers = new Headers(init.headers || input.headers || {},protocolVersion);
 
 		if (inputBody !== null && !headers.has('Content-Type')) {
 			const contentType = extractContentType(inputBody, this);
