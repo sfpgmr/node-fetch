@@ -7,7 +7,6 @@
 import {types} from 'node:util';
 import http from 'node:http';
 import http2 from 'node:http2';
-import { assertValidPseudoHeader } from 'internal/http2/util.js';
 
 /* c8 ignore next 9 */
 const validateHeaderName = typeof http.validateHeaderName === 'function' ?
