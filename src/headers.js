@@ -27,15 +27,15 @@ const pseudoHeaderNames = {
 	[http2.constants.HTTP2_HEADER_STATUS]:true
 };
 
-function validatePseudoHeader(name){
+const validatePseudoHeader = name=>{
 	if(!pseudoHeaderNames[name]){
 		const error = new TypeError(`${name} is not a valid pseudo header`);
 		Object.defineProperty(error, 'code', {value: 'ERR_INVALID_PSEUDO_HEADER'});
 		throw error;
 	}
-}
+};
 
-function validHeaderName2(name,protocolVersion){
+const validateHeaderName2 = (name,protocolVersion = 1.0) =>{
 	if(protocolVersion === 2.0) {
 		if(http2.constants.assertValidPseudoHeader)
 		try {
@@ -46,7 +46,7 @@ function validHeaderName2(name,protocolVersion){
 	} else {
 		validateHeaderName(name);
 	}
-}
+};
 
 /* c8 ignore next 9 */
 const validateHeaderValue = typeof http.validateHeaderValue === 'function' ?
@@ -127,7 +127,7 @@ export default class Headers extends URLSearchParams {
 		result =
 			result.length > 0 ?
 				result.map(([name, value]) => {
-					validHeaderName2(name,protocolVersion);
+					validateHeaderName2(name,protocolVersion);
 					validateHeaderValue(name, String(value));
 					return [String(name).toLowerCase(), String(value)];
 				}) :
